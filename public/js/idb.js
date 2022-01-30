@@ -1,41 +1,50 @@
+// Create variable to hold db connection
 let db;
+
+// Establish a connection to IndexedDB database called 'budget' and set it version 1
 const request = indexedDB.open('budget', 1);
 
+// This event will emit if the database version changes
 request.onupgradeneeded = function (event) {
+  // Save a reference to the database
   const db = event.target.result;
-  db.createObjectStore('new_transaction', { autoIncrement: true });
+  // Create an object store (table) called 'pending', set it to have an auto incrementing primary key of sorts
+  db.createObjectStore('pending', { autoIncrement: true });
 };
 
 request.onsuccess = function (event) {
-  // when db is successfully created with its object store (from onupgradedneeded event above), save reference to db in global variable
+  // When db is successfully created with its object store (from onupgradedneeded event above), save reference to db in global variable
   db = event.target.result;
 
-  // check if app is online, if yes run checkDatabase() function to send all local db data to api
+  // Check if app is online, if yes run uploadTransaction() function to send all local db data to api
   if (navigator.onLine) {
     uploadTransaction();
   }
 };
 
 request.onerror = function (event) {
-  // log error here
+  // Log error here
   console.log(event.target.errorCode);
 };
 
+// This function will be executed if we attempt to submit a new transaction and there's no internet connection
 function saveRecord(record) {
-  const transaction = db.transaction(['new_transaction'], 'readwrite');
+  // Open a new transaction with the database with read and write permissions
+  const transaction = db.transaction(['pending'], 'readwrite');
 
-  const budgetObjectStore = transaction.objectStore('new_transaction');
+  // Access the object store for 'pending'
+  const budgetObjectStore = transaction.objectStore('pending');
 
-  // add record to your store with add method.
+  // Add record to your store with add method
   budgetObjectStore.add(record);
 }
 
 function uploadTransaction() {
   // open a transaction on your pending db
-  const transaction = db.transaction(['new_transaction'], 'readwrite');
+  const transaction = db.transaction(['pending'], 'readwrite');
 
   // access your pending object store
-  const budgetObjectStore = transaction.objectStore('new_transaction');
+  const budgetObjectStore = transaction.objectStore('pending');
 
   // get all records from store and set to a variable
   const getAll = budgetObjectStore.getAll();
@@ -57,13 +66,17 @@ function uploadTransaction() {
             throw new Error(serverResponse);
           }
 
-          const transaction = db.transaction(['new_transaction'], 'readwrite');
-          const budgetObjectStore = transaction.objectStore('new_transaction');
+          // Open one more transaction
+          const transaction = db.transaction(['pending'], 'readwrite');
+          // Access the pending object store
+          const budgetObjectStore = transaction.objectStore('pending');
           // clear all items in your store
           budgetObjectStore.clear();
+
+          alert('All saved transactions have been submitted!');
         })
         .catch(err => {
-          // set reference to redirect back here
+          // Set reference to redirect back here
           console.log(err);
         });
     }
